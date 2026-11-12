@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Lib.Harmony" Version="2.4.2" PrivateAssets="all" />
+    <Reference Include="VRage"><HintPath>$(GameBin64)/VRage.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Render"><HintPath>$(GameBin64)/VRage.Render.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="SharpDX"><HintPath>$(GameBin64)/SharpDX.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="SharpDX.D3DCompiler"><HintPath>$(GameBin64)/SharpDX.D3DCompiler.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
