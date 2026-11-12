@@ -16,6 +16,8 @@ public static class Preloader
         "scale *= min(mad(bump - 1.0f, smoothstep(0, critical_point, viewVectorLength), 1.0f), bump * smoothstep(0, far_clip - critical_point, far_clip - viewVectorLength));";
     private const string DistanceGrowth =
         "scale *= lerp(1, frame_.Foliage.clipping_scaling.w, saturate((viewVectorLength - frame_.Foliage.clipping_scaling.y) / frame_.Foliage.clipping_scaling.z));";
+    private const string LodShrink = "scale *= distFraction;";
+    private const string DrawGrass = "if (!skip)";
 
     private static bool installed;
 
@@ -105,12 +107,17 @@ public static class Preloader
     private static string ReadSource(string path)
     {
         var source = File.ReadAllText(path);
-        if (!IsFoliageShader(path) || !source.Contains(Bump) || !source.Contains(DistanceGrowth))
+        if (!IsFoliageShader(path) || !source.Contains(Bump) || !source.Contains(DistanceGrowth)
+            || !source.Contains(LodShrink) || !source.Contains(DrawGrass))
             return source;
 
         return source.Replace(Bump,
                 "#ifdef ROCK_FOLIAGE\n        " + Bump +
-                "\n#else\n        scale *= smoothstep(0, far_clip - critical_point, far_clip - viewVectorLength);\n#endif")
-            .Replace(DistanceGrowth, string.Empty);
+                "\n#else\n        float visibility = smoothstep(0, far_clip - critical_point, far_clip - viewVectorLength);\n#endif")
+            .Replace(DistanceGrowth, string.Empty)
+            // The random draw is stable per blade. Interpolate its visibility between LOD bands.
+            .Replace(LodShrink, "visibility *= skip ? 1.0f - distFraction : distFraction;")
+            .Replace(DrawGrass,
+                "if (skip && skipNext)\n            visibility = 0.0f;\n        if (visibility > random.GetFloat())");
     }
 }
