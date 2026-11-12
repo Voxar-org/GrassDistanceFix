@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using HarmonyLib;
 using SharpDX.Direct3D;
 using SharpDX.D3DCompiler;
@@ -17,9 +16,14 @@ public static class Preloader
         "scale *= min(mad(bump - 1.0f, smoothstep(0, critical_point, viewVectorLength), 1.0f), bump * smoothstep(0, far_clip - critical_point, far_clip - viewVectorLength));";
     private const string DistanceGrowth =
         "scale *= lerp(1, frame_.Foliage.clipping_scaling.w, saturate((viewVectorLength - frame_.Foliage.clipping_scaling.y) / frame_.Foliage.clipping_scaling.z));";
-    private static readonly Regex LodShrink = new Regex(
-        @"bool skipNext = GetSkip\(seed, part \+ 1\);\s*if \(skip != skipNext\)\s*\{\s*" +
-        @"float distFraction = 1 - \(dist \* PARTS_COUNT - part\);\s*scale \*= distFraction;\s*\}");
+    private const string GrassInclude = "#include \"GrassFoliage.hlsli\"";
+    private const string FoliageInclude = "#include \"Foliage.hlsli\"";
+    private const string TexcoordField = "float3 texcoord : TEXCOORD0;";
+    private const string BillboardParameter = "uint textureIndex, inout TriangleStream<RenderingPixelInput>";
+    private const string BillboardVertex = "RenderingPixelInput vertex;";
+    private const string BillboardCall = "onb[0], textureIndex, triangle_stream);";
+    private const string LodShrink = "scale *= distFraction;";
+    private const string ObjectDither = "Dither(input.position.xyz, object_.custom_alpha);";
 
     private static bool installed;
 
@@ -109,13 +113,33 @@ public static class Preloader
     private static string ReadSource(string path)
     {
         var source = File.ReadAllText(path);
-        if (!IsFoliageShader(path) || !source.Contains(Bump) || !source.Contains(DistanceGrowth)
-            || !LodShrink.IsMatch(source))
+        if (!IsFoliageShader(path) || !source.Contains(GrassInclude) || !source.Contains(Bump)
+            || !source.Contains(DistanceGrowth) || !source.Contains(LodShrink)
+            || !source.Contains(BillboardCall) || !source.Contains(ObjectDither))
             return source;
 
-        var withoutGrowth = source.Replace(Bump,
-                "#ifdef ROCK_FOLIAGE\n        " + Bump + "\n#endif")
-            .Replace(DistanceGrowth, string.Empty);
-        return LodShrink.Replace(withoutGrowth, string.Empty);
+        // Inline the two sibling includes only in the grass variant of this shader.
+        // The renderer resolves their nested includes from the same directory as before.
+        var directory = Path.GetDirectoryName(path);
+        var grass = File.ReadAllText(Path.Combine(directory, "GrassFoliage.hlsli"));
+        var foliage = File.ReadAllText(Path.Combine(directory, "Foliage.hlsli"));
+        if (!grass.Contains(FoliageInclude) || !grass.Contains(BillboardParameter)
+            || !grass.Contains(BillboardVertex) || !foliage.Contains(TexcoordField))
+            return source;
+
+        foliage = foliage.Replace(TexcoordField,
+            TexcoordField + "\n    nointerpolation float coverage : TEXCOORD1;");
+        grass = grass.Replace(FoliageInclude, foliage)
+            .Replace(BillboardParameter, "float coverage, " + BillboardParameter)
+            .Replace(BillboardVertex, BillboardVertex + "\n    vertex.coverage = coverage;");
+
+        return source.Replace(GrassInclude, grass)
+            .Replace(Bump, "#ifdef ROCK_FOLIAGE\n        " + Bump +
+                "\n#else\n        float coverage = smoothstep(0, far_clip - critical_point, far_clip - viewVectorLength);\n#endif")
+            .Replace(DistanceGrowth, string.Empty)
+            .Replace(LodShrink, "coverage *= distFraction;")
+            .Replace(BillboardCall, "onb[0], coverage, textureIndex, triangle_stream);")
+            .Replace(ObjectDither, ObjectDither +
+                "\n#ifndef ROCK_FOLIAGE\n    Dither(input.position.xyz, float2(1.0f - input.coverage, 0.0f));\n#endif");
     }
 }

@@ -1,6 +1,6 @@
 # Grass Distance Fix
 
-A client plugin for Space Engineers 1 and Pulsar on Windows (.NET Framework). Individual grass blades keep their material size as you move away. The shader uses the vanilla draw cutoff and LOD blade selection. Blades disappear at those boundaries without the vanilla size-based transitions. The patch applies to the vanilla grass renderer. Foliage Rewrite has its own shader and bypasses this fix when its rewrite is enabled.
+A client plugin for Space Engineers 1 and Pulsar on Windows (.NET Framework). Grass blades keep their material size as you move away. The shader uses the vanilla draw cutoff, LOD blade selection, and fade intervals. It fades grass by dithering pixel coverage. The patch applies to the vanilla grass renderer. Foliage Rewrite has its own shader and bypasses this fix when its rewrite is enabled.
 
 ## Build and load
 
