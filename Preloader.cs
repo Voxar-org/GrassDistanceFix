@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
+using GrassDistanceFix;
 using SharpDX.Direct3D;
 using SharpDX.D3DCompiler;
 
@@ -52,12 +53,14 @@ public static class Preloader
         try
         {
             harmony.Patch(preprocess, transpiler: new HarmonyMethod(typeof(Preloader), nameof(PatchPreprocess)));
-            harmony.Patch(compile, transpiler: new HarmonyMethod(typeof(Preloader), nameof(PatchCompile)));
+            harmony.Patch(compile, prefix: new HarmonyMethod(typeof(Preloader), nameof(ApplyOptions)),
+                transpiler: new HarmonyMethod(typeof(Preloader), nameof(PatchCompile)));
         }
         catch
         {
             harmony.Unpatch(preprocess, HarmonyPatchType.Transpiler, HarmonyId);
             harmony.Unpatch(compile, HarmonyPatchType.Transpiler, HarmonyId);
+            harmony.Unpatch(compile, HarmonyPatchType.Prefix, HarmonyId);
             throw;
         }
 
@@ -76,6 +79,29 @@ public static class Preloader
         var original = AccessTools.Method(typeof(ShaderBytecode), nameof(ShaderBytecode.PreprocessFromFile),
             new[] { typeof(string), typeof(ShaderMacro[]), typeof(Include), typeof(string).MakeByRefType() });
         return ReplaceCall(instructions, original, nameof(PreprocessSource));
+    }
+
+    private static void ApplyOptions(string filepath, ref ShaderMacro[] macros)
+    {
+        if (!IsFoliageShader(filepath) || macros.Any(macro => macro.Name == "ROCK_FOLIAGE"))
+            return;
+
+        // Snapshot once so cache lookup and bytecode compilation use the same options.
+        var options = Options.Current;
+        if (options == Options.Default)
+            return;
+
+        var selected = new List<ShaderMacro>(macros);
+        if (!options.HasFlag(FadeOptions.Enabled))
+            selected.Add(new ShaderMacro("GDF_DISABLED", null));
+        else
+        {
+            if (!options.HasFlag(FadeOptions.DrawLimit))
+                selected.Add(new ShaderMacro("GDF_NO_DRAW_LIMIT_FADE", null));
+            if (!options.HasFlag(FadeOptions.Lod))
+                selected.Add(new ShaderMacro("GDF_NO_LOD_FADE", null));
+        }
+        macros = selected.ToArray();
     }
 
     private static IEnumerable<CodeInstruction> PatchCompile(IEnumerable<CodeInstruction> instructions)
@@ -133,13 +159,15 @@ public static class Preloader
             .Replace(BillboardParameter, "float coverage, " + BillboardParameter)
             .Replace(BillboardVertex, BillboardVertex + "\n    vertex.coverage = coverage;");
 
-        return source.Replace(GrassInclude, grass)
+        var patched = source.Replace(GrassInclude, grass)
             .Replace(Bump, "#ifdef ROCK_FOLIAGE\n        " + Bump +
-                "\n#else\n        float coverage = smoothstep(0, far_clip - critical_point, far_clip - viewVectorLength);\n#endif")
+                "\n#else\n        float coverage = 1.0f;\n#ifndef GDF_NO_DRAW_LIMIT_FADE\n" +
+                "        coverage = smoothstep(0, far_clip - critical_point, far_clip - viewVectorLength);\n#endif\n#endif")
             .Replace(DistanceGrowth, string.Empty)
-            .Replace(LodShrink, "coverage *= distFraction;")
+            .Replace(LodShrink, "#ifndef GDF_NO_LOD_FADE\n            coverage *= distFraction;\n#endif")
             .Replace(BillboardCall, "onb[0], coverage, textureIndex, triangle_stream);")
             .Replace(ObjectDither, ObjectDither +
                 "\n#ifndef ROCK_FOLIAGE\n    Dither(input.position.xyz, float2(1.0f - input.coverage, 0.0f));\n#endif");
+        return "#ifdef GDF_DISABLED\n" + source + "\n#else\n" + patched + "\n#endif";
     }
 }

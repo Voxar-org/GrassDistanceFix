@@ -8,6 +8,11 @@
     <PackageReference Include="Lib.Harmony" Version="2.4.2" PrivateAssets="all" />
     <Reference Include="VRage"><HintPath>$(GameBin64)/VRage.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="VRage.Render"><HintPath>$(GameBin64)/VRage.Render.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Library"><HintPath>$(GameBin64)/VRage.Library.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Game"><HintPath>$(GameBin64)/VRage.Game.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Math"><HintPath>$(GameBin64)/VRage.Math.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Sandbox.Game"><HintPath>$(GameBin64)/Sandbox.Game.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Sandbox.Graphics"><HintPath>$(GameBin64)/Sandbox.Graphics.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="SharpDX"><HintPath>$(GameBin64)/SharpDX.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="SharpDX.D3DCompiler"><HintPath>$(GameBin64)/SharpDX.D3DCompiler.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>

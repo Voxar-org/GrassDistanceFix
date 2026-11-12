@@ -12,6 +12,8 @@ In Pulsar, add `bin/Release/net48` as a development folder in the plugin sources
 
 For a running game with the SE MCP bridge, use its PulsarHelper to load the DLL. Live load and unload both queue the game's built-in shader reload.
 
+Open the plugin's settings in Pulsar to enable or disable the size fix or toggle the draw-limit and LOD fades independently. **Apply** saves the settings and reloads the shaders. The draw distance still comes from the game's graphics settings.
+
 ## Verification
 
 On EarthLike, use a stationary patch of grass with a landmark and move the spectator camera back at a low, consistent angle. Check that visible blades keep their physical size through LOD transitions, grass stops at the configured draw limit, and pebble foliage looks the same.

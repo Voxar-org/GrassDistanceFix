@@ -1,5 +1,6 @@
 using VRage.Plugins;
 using VRageRender;
+using Sandbox.Graphics.GUI;
 
 namespace GrassDistanceFix
 {
@@ -16,6 +17,8 @@ namespace GrassDistanceFix
         }
 
         public void Update() { }
+
+        public void OpenConfigDialog() => MyGuiSandbox.AddScreen(new SettingsScreen());
 
         public void Dispose()
         {
