@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using HarmonyLib;
 using SharpDX.Direct3D;
 using SharpDX.D3DCompiler;
@@ -16,8 +17,9 @@ public static class Preloader
         "scale *= min(mad(bump - 1.0f, smoothstep(0, critical_point, viewVectorLength), 1.0f), bump * smoothstep(0, far_clip - critical_point, far_clip - viewVectorLength));";
     private const string DistanceGrowth =
         "scale *= lerp(1, frame_.Foliage.clipping_scaling.w, saturate((viewVectorLength - frame_.Foliage.clipping_scaling.y) / frame_.Foliage.clipping_scaling.z));";
-    private const string LodShrink = "scale *= distFraction;";
-    private const string DrawGrass = "if (!skip)";
+    private static readonly Regex LodShrink = new Regex(
+        @"bool skipNext = GetSkip\(seed, part \+ 1\);\s*if \(skip != skipNext\)\s*\{\s*" +
+        @"float distFraction = 1 - \(dist \* PARTS_COUNT - part\);\s*scale \*= distFraction;\s*\}");
 
     private static bool installed;
 
@@ -108,16 +110,12 @@ public static class Preloader
     {
         var source = File.ReadAllText(path);
         if (!IsFoliageShader(path) || !source.Contains(Bump) || !source.Contains(DistanceGrowth)
-            || !source.Contains(LodShrink) || !source.Contains(DrawGrass))
+            || !LodShrink.IsMatch(source))
             return source;
 
-        return source.Replace(Bump,
-                "#ifdef ROCK_FOLIAGE\n        " + Bump +
-                "\n#else\n        float visibility = smoothstep(0, far_clip - critical_point, far_clip - viewVectorLength);\n#endif")
-            .Replace(DistanceGrowth, string.Empty)
-            // The random draw is stable per blade. Interpolate its visibility between LOD bands.
-            .Replace(LodShrink, "visibility *= skip ? 1.0f - distFraction : distFraction;")
-            .Replace(DrawGrass,
-                "if (skip && skipNext)\n            visibility = 0.0f;\n        if (visibility > random.GetFloat())");
+        var withoutGrowth = source.Replace(Bump,
+                "#ifdef ROCK_FOLIAGE\n        " + Bump + "\n#endif")
+            .Replace(DistanceGrowth, string.Empty);
+        return LodShrink.Replace(withoutGrowth, string.Empty);
     }
 }

@@ -1,6 +1,6 @@
 # Grass Distance Fix
 
-A client plugin for Space Engineers 1 and Pulsar on Windows (.NET Framework). Individual grass blades keep their material size as you move away. Distance thinning and the draw-limit fade remove whole blades gradually. The patch applies to the vanilla grass renderer. Foliage Rewrite has its own shader and bypasses this fix when its rewrite is enabled.
+A client plugin for Space Engineers 1 and Pulsar on Windows (.NET Framework). Individual grass blades keep their material size as you move away. The shader uses the vanilla draw cutoff and LOD blade selection. Blades disappear at those boundaries without the vanilla size-based transitions. The patch applies to the vanilla grass renderer. Foliage Rewrite has its own shader and bypasses this fix when its rewrite is enabled.
 
 ## Build and load
 
@@ -14,4 +14,4 @@ For a running game with the SE MCP bridge, use its PulsarHelper to load the DLL.
 
 ## Verification
 
-On EarthLike, use a stationary patch of grass with a landmark and move the spectator camera back at a low, consistent angle. Check that blades keep their physical size through LOD transitions, that the patch thins out near the draw limit, and that pebble foliage looks the same.
+On EarthLike, use a stationary patch of grass with a landmark and move the spectator camera back at a low, consistent angle. Check that visible blades keep their physical size through LOD transitions, grass stops at the configured draw limit, and pebble foliage looks the same.
